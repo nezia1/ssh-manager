@@ -84,7 +84,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selectedConnection = &selectedItem.Conn
 			return m, tea.Quit
 		case key.Matches(msg, m.keys.insertItem):
-			password := "***REMOVED***"
+			password := "password"
 			m.manager.AddConnection("infinity.usbx.me", "nezia", nil, &password)
 			listCmd := m.list.SetItems(m.manager.Items())
 			return m, tea.Batch(listCmd)
