@@ -21,12 +21,20 @@ type keyMap struct {
 	quit           key.Binding
 }
 
+type page int
+
 type model struct {
 	manager            connection.ConnectionManager
 	list               list.Model
 	keys               *keyMap
 	selectedConnection *connection.Connection
+	currentPage        page
 }
+
+const (
+	home page = iota
+	addConnection
+)
 
 func newKeyMap() *keyMap {
 	return &keyMap{
@@ -65,10 +73,19 @@ func initialModel() model {
 	}
 
 	return model{
-		manager: cm,
-		list:    list,
-		keys:    keys,
+		manager:     cm,
+		list:        list,
+		keys:        keys,
+		currentPage: home,
 	}
+}
+
+func renderHome(m model) string {
+	return appStyle.Render(m.list.View())
+}
+
+func renderAddConnection() string {
+	return "add connection"
 }
 
 func (m model) Init() tea.Cmd {
@@ -84,10 +101,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.selectedConnection = &selectedItem.Conn
 			return m, tea.Quit
 		case key.Matches(msg, m.keys.insertItem):
-			password := "password"
-			m.manager.AddConnection("infinity.usbx.me", "nezia", nil, &password)
-			listCmd := m.list.SetItems(m.manager.Items())
-			return m, tea.Batch(listCmd)
+			m.currentPage = addConnection
+			// password := "password"
+			// m.manager.AddConnection("infinity.usbx.me", "nezia", nil, &password)
+			// listCmd := m.list.SetItems(m.manager.Items())
+			// return m, tea.Batch(listCmd)
 		case key.Matches(msg, m.keys.quit):
 			return m, tea.Quit
 		}
@@ -102,7 +120,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return appStyle.Render(m.list.View())
+	switch m.currentPage {
+	case home:
+		return renderHome(m)
+	case addConnection:
+		return renderAddConnection()
+	}
+	return ""
 }
 
 func Start() {
@@ -112,5 +136,7 @@ func Start() {
 		log.Fatal(err)
 	}
 
-	m.(model).selectedConnection.StartSession()
+	if m.(model).selectedConnection != nil {
+		m.(model).selectedConnection.StartSession()
+	}
 }
