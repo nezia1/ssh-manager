@@ -22,9 +22,10 @@ type keyMap struct {
 }
 
 type model struct {
-	manager connection.ConnectionManager
-	list    list.Model
-	keys    *keyMap
+	manager            connection.ConnectionManager
+	list               list.Model
+	keys               *keyMap
+	selectedConnection *connection.Connection
 }
 
 func newKeyMap() *keyMap {
@@ -78,13 +79,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, m.keys.connect):
+			selectedItem := m.list.SelectedItem().(connection.Item)
+			m.selectedConnection = &selectedItem.Conn
+			return m, tea.Quit
 		case key.Matches(msg, m.keys.insertItem):
-			m.manager.AddConnection("root", "nezia", nil, nil)
+			password := "***REMOVED***"
+			m.manager.AddConnection("infinity.usbx.me", "nezia", nil, &password)
 			listCmd := m.list.SetItems(m.manager.Items())
 			return m, tea.Batch(listCmd)
 		case key.Matches(msg, m.keys.quit):
 			return m, tea.Quit
-
 		}
 	case tea.WindowSizeMsg:
 		h, v := appStyle.GetFrameSize()
@@ -102,7 +107,10 @@ func (m model) View() string {
 
 func Start() {
 	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	m, err := p.Run()
+	if err != nil {
 		log.Fatal(err)
 	}
+
+	m.(model).selectedConnection.StartSession()
 }

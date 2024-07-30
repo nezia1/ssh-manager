@@ -2,4 +2,4 @@
 
 connection="$(./main)"
 
-[ -n "$connection" ] && eval "$connection"
+./main | xargs -I {} eval '{}'
