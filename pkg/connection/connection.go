@@ -10,6 +10,10 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const (
+	DefaultPort = 22
+)
+
 type Connection struct {
 	Username string
 	Host     string
@@ -66,6 +70,11 @@ type ConnectionManager struct {
 }
 
 func (cm *ConnectionManager) AddConnection(host string, user string, port *int, password *string) {
+	if port == nil {
+		defaultPort := DefaultPort
+		port = &defaultPort
+	}
+
 	connection := Connection{
 		Username: user,
 		Host:     host,
@@ -93,7 +102,7 @@ func (c Connection) StartSession() {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", c.Host), config)
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), config)
 
 	if err != nil {
 		log.Fatal(err)
