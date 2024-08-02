@@ -30,7 +30,10 @@ func renderAddConnection(m model) string {
 			b.WriteRune('\n')
 		}
 	}
+	button := buttonStyle.Render("Add connection")
+
+	popupContent := lipgloss.JoinVertical(lipgloss.Top, b.String(), button)
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
-		popupStyle.Render(b.String()))
+		popupStyle.Render(popupContent))
 
 }

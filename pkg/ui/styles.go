@@ -11,4 +11,9 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("5")).
 			Align(lipgloss.Center, lipgloss.Center)
+	buttonStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("12")).
+			Padding(0, 3).
+			MarginTop(1)
 )
