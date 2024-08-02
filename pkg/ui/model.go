@@ -59,27 +59,27 @@ func initialModel() model {
 		cm     = connection.ConnectionManager{}
 		list   = list.New(cm.Items(), list.NewDefaultDelegate(), 0, 0)
 		keys   = newKeyMap()
-		inputs = make([]textinput.Model, 2)
+		inputs = []textinput.Model{}
 	)
 
-	for i := range inputs {
-		t := textinput.New()
-		switch i {
-		case 0:
-			t.Placeholder = "SSH string (format user@host:port)"
-			t.PromptStyle = focusedStyle
-			t.TextStyle = focusedStyle
-			t.Focus()
-		case 1:
-			t.Placeholder = "Password (optional)"
-			t.PromptStyle = blurredStyle
-			t.TextStyle = blurredStyle
-			t.EchoMode = textinput.EchoPassword
-			t.EchoCharacter = '•'
-		}
-		inputs[i] = t
-	}
+	// initialize text inputs
+	sshInput := textinput.New()
+	sshInput.Placeholder = "SSH string (format user@host:port)"
+	sshInput.PromptStyle = focusedStyle
+	sshInput.TextStyle = focusedStyle
+	sshInput.Focus()
 
+	passwordInput := textinput.New()
+	passwordInput.Placeholder = "Password (optional)"
+	passwordInput.PromptStyle = blurredStyle
+	passwordInput.TextStyle = blurredStyle
+	passwordInput.EchoMode = textinput.EchoPassword
+	passwordInput.EchoCharacter = '•'
+
+	inputs[0] = sshInput
+	inputs[1] = passwordInput
+
+	// initialize list
 	list.Title = "Available connections"
 	list.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
@@ -89,6 +89,7 @@ func initialModel() model {
 		}
 	}
 
+	// initialize model
 	return model{
 		manager:           cm,
 		list:              list,
