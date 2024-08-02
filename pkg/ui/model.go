@@ -74,6 +74,8 @@ func initialModel() model {
 			t.Placeholder = "Password (optional)"
 			t.PromptStyle = blurredStyle
 			t.TextStyle = blurredStyle
+			t.EchoMode = textinput.EchoPassword
+			t.EchoCharacter = '•'
 		}
 		inputs[i] = t
 	}
@@ -164,6 +166,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.list, listCmd = m.list.Update(msg)
 	inputsCmd = m.updateInputs(msg)
 
+	for i := range m.inputs {
+		m.inputs[i].Width = m.width / 4
+
+	}
 	return m, tea.Batch(listCmd, inputsCmd)
 }
 
