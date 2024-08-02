@@ -30,6 +30,8 @@ type model struct {
 	inputs             []textinput.Model
 	focusedInputIndex  int
 	currentPage        page
+	width              int
+	height             int
 }
 
 func newKeyMap() *keyMap {
@@ -110,14 +112,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keys.quit):
 				return m, tea.Quit
 			}
-		case tea.WindowSizeMsg:
-			h, v := appStyle.GetFrameSize()
-			m.list.SetSize(msg.Width-h, msg.Height-v)
 		}
+
 	case addConnection:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
-
 			switch msg.String() {
 			case "tab", "shift+tab", "up", "down", "enter":
 				s := msg.String()
@@ -150,6 +149,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			}
 		}
+	}
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		h, v := appStyle.GetFrameSize()
+		m.width = msg.Width - h
+		m.height = msg.Height - v
+		m.list.SetSize(m.width, m.height)
+		popupStyle = popupStyle.Width(m.width / 2).Height(m.height / 2)
 	}
 
 	var listCmd, inputsCmd tea.Cmd

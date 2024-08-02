@@ -1,6 +1,10 @@
 package ui
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 func (m model) View() string {
 	switch m.currentPage {
@@ -11,7 +15,6 @@ func (m model) View() string {
 	}
 	return ""
 }
-
 
 func renderHome(m model) string {
 	return appStyle.Render(m.list.View())
@@ -27,5 +30,7 @@ func renderAddConnection(m model) string {
 			b.WriteRune('\n')
 		}
 	}
-	return appStyle.Render(b.String())
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,
+		popupStyle.Render(b.String()))
+
 }
