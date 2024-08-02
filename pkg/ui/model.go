@@ -1,6 +1,10 @@
 package ui
 
 import (
+	"log"
+	"strconv"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -59,7 +63,7 @@ func initialModel() model {
 		cm     = connection.ConnectionManager{}
 		list   = list.New(cm.Items(), list.NewDefaultDelegate(), 0, 0)
 		keys   = newKeyMap()
-		inputs = []textinput.Model{}
+		inputs = make([]textinput.Model, 2)
 	)
 
 	// initialize text inputs
@@ -101,6 +105,8 @@ func initialModel() model {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	cmds := []tea.Cmd{}
+
 	switch m.currentPage {
 	case home:
 		switch msg := msg.(type) {
@@ -109,11 +115,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, m.keys.connect):
 				selectedItem := m.list.SelectedItem().(connection.Item)
 				m.selectedConnection = &selectedItem.Conn
-				return m, tea.Quit
+				cmds = append(cmds, tea.Quit)
 			case key.Matches(msg, m.keys.insertItem):
 				m.currentPage = addConnection
 			case key.Matches(msg, m.keys.quit):
-				return m, tea.Quit
+				cmds = append(cmds, tea.Quit)
 			}
 		}
 
@@ -125,7 +131,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s := msg.String()
 
 				if s == "enter" {
-					return m, tea.Quit
+					parts := strings.Split(m.inputs[0].Value(), "@")
+
+					username := parts[0]
+					parts = strings.Split(parts[1], ":")
+
+					host := parts[0]
+					port, err := strconv.Atoi(parts[1])
+
+					if err != nil {
+						// TODO: show error
+						log.Fatal(err)
+					}
+
+					var password string
+					if m.inputs[1].Value() != "" {
+						password = m.inputs[1].Value()
+					}
+
+					m.manager.AddConnection(host, username, port, &password)
+					m.currentPage = home
+
+					cmd := m.list.SetItems(m.manager.Items())
+
+					cmds = append(cmds, cmd)
 				}
 
 				// adding one to account for the button
@@ -135,11 +164,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusedInputIndex = (m.focusedInputIndex - 1 + (len(m.inputs)) + 1) % (len(m.inputs) + 1)
 				}
 
-				cmds := make([]tea.Cmd, len(m.inputs))
-
 				for i := range m.inputs {
 					if i == m.focusedInputIndex {
-						cmds[i] = m.inputs[i].Focus()
+						cmds = append(cmds, m.inputs[i].Focus())
 						m.inputs[i].PromptStyle = focusedStyle
 						m.inputs[i].TextStyle = focusedStyle
 						continue
@@ -153,7 +180,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 
-				return m, tea.Batch(cmds...)
+				if len(cmds) > 0 {
+					return m, tea.Batch(cmds...)
+				}
+
+				return m, nil
 			}
 		}
 	}

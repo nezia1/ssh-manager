@@ -17,7 +17,7 @@ const (
 type Connection struct {
 	Username string
 	Host     string
-	Port     *int
+	Port     int
 	Password *string // stored as a pointer to allow for nil values (TODO add encryption)
 }
 
@@ -33,10 +33,7 @@ func (c Connection) SSHCommand() (string, []string) {
 	}
 
 	args = append(args, fmt.Sprintf("%s@%s", c.Username, c.Host))
-
-	if c.Port != nil {
-		args = append(args, "-p", fmt.Sprintf("%d", *c.Port))
-	}
+	args = append(args, "-p", fmt.Sprintf("%d", c.Port))
 
 	return command, args
 }
@@ -49,7 +46,7 @@ func (i Item) Title() string {
 	var title strings.Builder
 
 	fmt.Fprintf(&title, "%s@%s", i.Conn.Username, i.Conn.Host)
-	if i.Conn.Port != nil {
+	if i.Conn.Port == 0 {
 		fmt.Fprintf(&title, ":%d", i.Conn.Port)
 	}
 	return title.String()
@@ -69,10 +66,9 @@ type ConnectionManager struct {
 	Connections []Connection
 }
 
-func (cm *ConnectionManager) AddConnection(host string, user string, port *int, password *string) {
-	if port == nil {
-		defaultPort := DefaultPort
-		port = &defaultPort
+func (cm *ConnectionManager) AddConnection(host string, user string, port int, password *string) {
+	if port == 0 {
+		port = DefaultPort
 	}
 
 	connection := Connection{
