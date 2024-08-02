@@ -16,4 +16,5 @@ var (
 			Background(lipgloss.Color("12")).
 			Padding(0, 3).
 			MarginTop(1)
+	focusedButtonStyle = buttonStyle.Background(lipgloss.Color("5"))
 )

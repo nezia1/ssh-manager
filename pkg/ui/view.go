@@ -22,7 +22,7 @@ func renderHome(m model) string {
 
 func renderAddConnection(m model) string {
 	var b strings.Builder
-
+	var button string
 	// Render the text inputs
 	for i := range m.inputs {
 		b.WriteString(m.inputs[i].View())
@@ -30,7 +30,12 @@ func renderAddConnection(m model) string {
 			b.WriteRune('\n')
 		}
 	}
-	button := buttonStyle.Render("Add connection")
+	// TODO: is a button really necessary?
+	if m.focusedInputIndex != len(m.inputs) {
+		button = buttonStyle.Render("Add connection")
+	} else {
+		button = focusedButtonStyle.Render("Add connection")
+	}
 
 	popupContent := lipgloss.JoinVertical(lipgloss.Top, b.String(), button)
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center,

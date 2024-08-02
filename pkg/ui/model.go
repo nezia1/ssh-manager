@@ -127,10 +127,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Quit
 				}
 
+				// adding one to account for the button
 				if s == "tab" || s == "down" {
-					m.focusedInputIndex = (m.focusedInputIndex + 1) % len(m.inputs)
+					m.focusedInputIndex = (m.focusedInputIndex + 1) % (len(m.inputs) + 1)
 				} else {
-					m.focusedInputIndex = (m.focusedInputIndex - 1 + len(m.inputs)) % len(m.inputs)
+					m.focusedInputIndex = (m.focusedInputIndex - 1 + (len(m.inputs)) + 1) % (len(m.inputs) + 1)
 				}
 
 				cmds := make([]tea.Cmd, len(m.inputs))
@@ -143,9 +144,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						continue
 					}
 
-					m.inputs[i].Blur()
-					m.inputs[i].PromptStyle = blurredStyle
-					m.inputs[i].TextStyle = blurredStyle
+					// we need to check if we're not on the button
+					if i < len(m.inputs) {
+						m.inputs[i].Blur()
+						m.inputs[i].PromptStyle = blurredStyle
+						m.inputs[i].TextStyle = blurredStyle
+					}
 				}
 
 				return m, tea.Batch(cmds...)
@@ -170,6 +174,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.inputs[i].Width = m.width / 4
 
 	}
+
 	return m, tea.Batch(listCmd, inputsCmd)
 }
 
