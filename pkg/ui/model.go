@@ -131,20 +131,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s := msg.String()
 
 				if s == "enter" {
+					var host, username, password string
+					var port int
 					parts := strings.Split(m.inputs[0].Value(), "@")
 
-					username := parts[0]
+					username = parts[0]
 					parts = strings.Split(parts[1], ":")
 
-					host := parts[0]
-					port, err := strconv.Atoi(parts[1])
+					host = parts[0]
+
+					var err error
+					if len(parts) == 1 {
+						port = 0
+					} else {
+						port, err = strconv.Atoi(parts[1])
+					}
 
 					if err != nil {
 						// TODO: show error
 						log.Fatal(err)
 					}
 
-					var password string
 					if m.inputs[1].Value() != "" {
 						password = m.inputs[1].Value()
 					}
@@ -179,11 +186,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.inputs[i].TextStyle = blurredStyle
 					}
 				}
-
-				if len(cmds) > 0 {
-					return m, tea.Batch(cmds...)
-				}
-
 				return m, nil
 			}
 		}
@@ -199,6 +201,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var listCmd, inputsCmd tea.Cmd
+
 	m.list, listCmd = m.list.Update(msg)
 	inputsCmd = m.updateInputs(msg)
 
@@ -207,7 +210,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	}
 
-	return m, tea.Batch(listCmd, inputsCmd)
+	cmds = append(cmds, listCmd, inputsCmd)
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m model) Init() tea.Cmd {
