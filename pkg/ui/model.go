@@ -122,93 +122,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, tea.Quit)
 			}
 		}
-
 	case addConnection:
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "tab", "shift+tab", "up", "down", "enter":
-				s := msg.String()
-
-				if s == "enter" {
-					var host, username, password string
-					var port int
-					parts := strings.Split(m.inputs[0].Value(), "@")
-
-					username = parts[0]
-					parts = strings.Split(parts[1], ":")
-
-					host = parts[0]
-
-					var err error
-					if len(parts) == 1 {
-						port = 0
-					} else {
-						port, err = strconv.Atoi(parts[1])
-					}
-
-					if err != nil {
-						// TODO: show error
-						log.Fatal(err)
-					}
-
-					if m.inputs[1].Value() != "" {
-						password = m.inputs[1].Value()
-					}
-
-					m.manager.AddConnection(host, username, port, &password)
-					m.currentPage = home
-
-					cmd := m.list.SetItems(m.manager.Items())
-
-					cmds = append(cmds, cmd)
-				}
-
-				// adding one to account for the button
-				if s == "tab" || s == "down" {
-					m.focusedInputIndex = (m.focusedInputIndex + 1) % (len(m.inputs) + 1)
-				} else {
-					m.focusedInputIndex = (m.focusedInputIndex - 1 + (len(m.inputs)) + 1) % (len(m.inputs) + 1)
-				}
-
-				for i := range m.inputs {
-					if i == m.focusedInputIndex {
-						cmds = append(cmds, m.inputs[i].Focus())
-						m.inputs[i].PromptStyle = focusedStyle
-						m.inputs[i].TextStyle = focusedStyle
-						continue
-					}
-
-					// we need to check if we're not on the button
-					if i < len(m.inputs) {
-						m.inputs[i].Blur()
-						m.inputs[i].PromptStyle = blurredStyle
-						m.inputs[i].TextStyle = blurredStyle
-					}
-				}
-				return m, nil
-			}
-		}
+		cmds = append(cmds, m.updateAddConnection(msg)...)
 	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := appStyle.GetFrameSize()
-		m.width = msg.Width - h
-		m.height = msg.Height - v
-		m.list.SetSize(m.width, m.height)
-		popupStyle = popupStyle.Width(m.width / 2).Height(m.height / 2)
+		m.handleResizing(msg)
 	}
 
+	// update the list and inputs with the current message
 	var listCmd, inputsCmd tea.Cmd
 
 	m.list, listCmd = m.list.Update(msg)
 	inputsCmd = m.updateInputs(msg)
-
-	for i := range m.inputs {
-		m.inputs[i].Width = m.width / 4
-
-	}
 
 	cmds = append(cmds, listCmd, inputsCmd)
 
@@ -219,6 +146,7 @@ func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
+// updateInputs updates the text inputs when typing into them.
 func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, len(m.inputs))
 
@@ -229,4 +157,106 @@ func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
 	}
 
 	return tea.Batch(cmds...)
+}
+
+// updateAddConnection handles the key presses when on the add connection page. This includes navigation, tabbing between inputs, submitting the form, and adding the connection to the manager.
+//
+// It returns a slice of commands to be executed.
+func (m *model) updateAddConnection(msg tea.Msg) []tea.Cmd {
+	var cmds []tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "tab", "shift+tab", "up", "down", "enter":
+			cmds = append(cmds, m.handleInputNavigation(msg.String())...)
+			// TODO: add I/O with config file
+			if msg.String() == "enter" {
+				host, username, password, port, err := m.parseConnectionInput()
+				if err != nil {
+					log.Fatal(err)
+				}
+				m.manager.AddConnection(host, username, port, &password)
+				m.currentPage = home
+
+				cmd := m.list.SetItems(m.manager.Items())
+
+				cmds = append(cmds, cmd)
+			}
+
+		}
+		return nil
+	}
+	return cmds
+}
+
+// parseConnectionInput parses the input from the text inputs (ssh string and password).
+//
+// Returns all the necessary data to create a SSH connection, or an error if the input is invalid in any way.
+func (m *model) parseConnectionInput() (host, username, password string, port int, err error) {
+	parts := strings.Split(m.inputs[0].Value(), "@")
+
+	username = parts[0]
+	parts = strings.Split(parts[1], ":")
+
+	host = parts[0]
+
+	if len(parts) == 1 {
+		port = 0
+	} else {
+		port, err = strconv.Atoi(parts[1])
+	}
+
+	if err != nil {
+		// TODO: show error
+		return "", "", "", 0, err
+	}
+
+	if m.inputs[1].Value() != "" {
+		password = m.inputs[1].Value()
+	}
+
+	return host, username, password, port, nil
+}
+
+// handleInputNavigation handles the navigation between the text inputs and the button.
+//
+// It returns a slice of commands to be executed.
+func (m *model) handleInputNavigation(key string) []tea.Cmd {
+	var cmds []tea.Cmd
+	// adding one to account for the button
+	if key == "tab" || key == "down" {
+		m.focusedInputIndex = (m.focusedInputIndex + 1) % (len(m.inputs) + 1)
+	} else {
+		m.focusedInputIndex = (m.focusedInputIndex - 1 + (len(m.inputs)) + 1) % (len(m.inputs) + 1)
+	}
+
+	for i := range m.inputs {
+		if i == m.focusedInputIndex {
+			cmds = append(cmds, m.inputs[i].Focus())
+			m.inputs[i].PromptStyle = focusedStyle
+			m.inputs[i].TextStyle = focusedStyle
+			continue
+		}
+
+		// we need to check if we're not on the button
+		if i < len(m.inputs) {
+			m.inputs[i].Blur()
+			m.inputs[i].PromptStyle = blurredStyle
+			m.inputs[i].TextStyle = blurredStyle
+		}
+	}
+	return cmds
+}
+
+// handleResizing handles the resizing of the window. It updates the width and height of the components globally.
+func (m *model) handleResizing(msg tea.WindowSizeMsg) {
+	h, v := appStyle.GetFrameSize()
+	m.width = msg.Width - h
+	m.height = msg.Height - v
+	m.list.SetSize(m.width, m.height)
+	popupStyle = popupStyle.Width(m.width / 2).Height(m.height / 2)
+
+	for i := range m.inputs {
+		m.inputs[i].Width = m.width / 4
+	}
 }
