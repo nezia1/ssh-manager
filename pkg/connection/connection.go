@@ -53,6 +53,7 @@ func (i Item) Title() string {
 
 }
 
+// TODO: avoid showing password in description
 func (i Item) Description() string {
 	command, args := i.Conn.SSHCommand()
 	return fmt.Sprintf("%s %s", command, strings.Join(args, " "))
@@ -79,6 +80,7 @@ func (cm *ConnectionManager) AddConnection(host string, user string, port int, p
 	}
 
 	cm.Connections = append(cm.Connections, connection)
+	// TODO: save to disk
 }
 
 func (cm ConnectionManager) Items() []list.Item {

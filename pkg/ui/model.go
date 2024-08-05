@@ -93,6 +93,11 @@ func initialModel() model {
 		}
 	}
 
+	// Load connections from file
+	err := cm.LoadFromDisk()
+	if err != nil {
+		log.Fatal(err)
+	}
 	// initialize model
 	return model{
 		manager:           cm,
