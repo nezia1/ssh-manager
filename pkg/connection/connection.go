@@ -81,6 +81,11 @@ func (cm *ConnectionManager) AddConnection(host string, user string, port int, p
 
 	cm.Connections = append(cm.Connections, connection)
 	// TODO: save to disk
+
+	err := cm.SaveToDisk()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (cm ConnectionManager) Items() []list.Item {

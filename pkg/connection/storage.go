@@ -1,10 +1,11 @@
 package connection
 
 import (
-	"io"
+	"fmt"
 	"os"
 	"path/filepath"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/pelletier/go-toml"
 )
 
@@ -17,8 +18,13 @@ const (
 
 // Saves the connections as a TOML file in the user config directory
 func (cm ConnectionManager) SaveToDisk() error {
-	storageFile, err := openStorageFile(os.O_APPEND | os.O_CREATE | os.O_WRONLY)
 
+	err := ensureStorageFile()
+	if err != nil {
+		return err
+	}
+
+	storagePath, err := storageFilePath()
 	if err != nil {
 		return err
 	}
@@ -29,7 +35,7 @@ func (cm ConnectionManager) SaveToDisk() error {
 		return err
 	}
 
-	_, err = storageFile.Write(b)
+	err = os.WriteFile(storagePath, b, StorageFilePerm)
 
 	if err != nil {
 		return err
@@ -38,59 +44,84 @@ func (cm ConnectionManager) SaveToDisk() error {
 	return nil
 }
 
-func (cm *ConnectionManager) LoadFromDisk() error {
-	storageFile, err := openStorageFile(os.O_APPEND | os.O_CREATE | os.O_RDONLY)
+// loadFromDisk loads the connections from the TOML file in the user config directory. If the file does not exist, it will be created, and an empty ConnectionManager will be initialized.
+func (cm *ConnectionManager) loadFromDisk() error {
+	storagePath, err := storageFilePath()
 
 	if err != nil {
 		return err
 	}
 
-	defer storageFile.Close()
-
-	b, err := io.ReadAll(storageFile)
+	err = ensureStorageFile()
 
 	if err != nil {
 		return err
 	}
 
-	err = toml.Unmarshal(b, cm)
+	b, err := os.ReadFile(storagePath)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	if err := toml.Unmarshal(b, cm); err != nil {
+		return fmt.Errorf("failed to unmarshal connections: %w", err)
 	}
 
 	return nil
 }
 
-func configurationPath() (string, error) {
+// storageFilePath returns the path to the storage file in the user config directory.
+func storageFilePath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get user config directory: %w", err)
 	}
 	storagePath := filepath.Join(configDir, StorageDirPrefix, StorageFileName)
 	return storagePath, nil
 }
 
-func openStorageFile(flags int) (*os.File, error) {
-	storagePath, err := configurationPath()
+// ensureStorageFile ensures that the storage file exists. If the file does not exist, it will be created.
+func ensureStorageFile() error {
+	storageFilePath, err := storageFilePath()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// check if directory containing the file exists
-	_, err = os.Stat(filepath.Dir(storagePath))
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(filepath.Dir(storagePath), StorageDirPerm)
-		if err != nil {
-			return nil, err
+	storageDir := filepath.Dir(storageFilePath)
+
+	// ensure directory exists
+	if _, err := os.Stat(storageDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(storageDir, StorageDirPerm); err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
 		}
 	}
 
-	storageFile, err := os.OpenFile(storagePath, flags, StorageFilePerm)
-
-	if err != nil {
-		return nil, err
+	// ensure file exists
+	if _, err := os.Stat(storageFilePath); os.IsNotExist(err) {
+		if _, err := os.Create(storageFilePath); err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
 	}
 
-	return storageFile, nil
+	return nil
+}
+
+// FetchConnections is a helper function for bubbletea. It fetches the connections from disk, and returns a message. This is useful for loading the model from the Init function.
+//
+// It returns a ConnectionsFetchedMsg message.
+func (cm ConnectionManager) FetchConnections() tea.Msg {
+	cm = ConnectionManager{}
+	err := cm.loadFromDisk()
+
+	if err != nil {
+		return err
+	}
+
+	return ConnectionsFetchedMsg{FetchedManager: cm}
+}
+
+// ConnectionsFetchedMsg is a bubbletea message that is sent when the connections have been fetched from disk.
+type ConnectionsFetchedMsg struct {
+	FetchedManager ConnectionManager
 }

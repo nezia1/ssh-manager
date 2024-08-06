@@ -93,11 +93,6 @@ func initialModel() model {
 		}
 	}
 
-	// Load connections from file
-	err := cm.LoadFromDisk()
-	if err != nil {
-		log.Fatal(err)
-	}
 	// initialize model
 	return model{
 		manager:           cm,
@@ -134,6 +129,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.handleResizing(msg)
+	case connection.ConnectionsFetchedMsg:
+		m.manager = msg.FetchedManager
+		cmds = append(cmds, m.list.SetItems(m.manager.Items()))
 	}
 
 	// update the list and inputs with the current message
@@ -148,7 +146,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(m.manager.FetchConnections, textinput.Blink)
 }
 
 // updateInputs updates the text inputs when typing into them.
