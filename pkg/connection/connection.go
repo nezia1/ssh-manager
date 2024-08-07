@@ -16,21 +16,25 @@ const (
 )
 
 type Connection struct {
-	Username string
-	Host     string
-	Port     int
-	Password *string // stored as a pointer to allow for nil values (TODO add encryption)
+	Username   string
+	Host       string
+	Port       int
+	IsPassword bool
 }
 
 func (c Connection) SSHCommand() (string, []string) {
 	var command string
 	var args []string
 
-	if c.Password == nil {
+	if !c.IsPassword {
 		command = "ssh"
 	} else {
 		command = "sshpass"
-		args = append(args, "-p", *c.Password, "ssh")
+		password, err := c.Password()
+		if err != nil {
+			log.Fatal(err)
+		}
+		args = append(args, "-p", password, "ssh")
 	}
 
 	args = append(args, fmt.Sprintf("%s@%s", c.Username, c.Host))
@@ -77,7 +81,16 @@ func (cm *ConnectionManager) AddConnection(host string, user string, port int, p
 		Username: user,
 		Host:     host,
 		Port:     port,
-		Password: password,
+	}
+
+	if password != nil {
+		err := connection.StorePassword(*password)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		connection.IsPassword = true
 	}
 
 	cm.Connections = append(cm.Connections, connection)
@@ -85,7 +98,7 @@ func (cm *ConnectionManager) AddConnection(host string, user string, port int, p
 	err := cm.SaveToDisk()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Printf("failed to save to disk: %v", err))
 	}
 }
 
@@ -99,33 +112,39 @@ func (cm ConnectionManager) Items() []list.Item {
 
 // StartSession starts a new SSH session with the given connection. It will prompt for a password if one was provided, otherwise, it will try to find all available keys in the default paths.
 // TODO: allow custom key paths
-func (c Connection) StartSession() {
+func (c Connection) StartSession() error {
 	var authMethods []ssh.AuthMethod
 
-	if c.Password != nil {
-		authMethods = append(authMethods, ssh.Password(*c.Password))
-	} else {
-		homeDir, err := os.UserHomeDir()
+	if c.IsPassword {
+		password, err := c.Password()
+
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
-		// assume the keys are located at the default paths
-		keyPaths := []string{
-			fmt.Sprintf("%s/.ssh/id_rsa", homeDir),
-			fmt.Sprintf("%s/.ssh/id_dsa", homeDir),
-			fmt.Sprintf("%s/.ssh/id_ecdsa", homeDir),
-			fmt.Sprintf("%s/.ssh/id_ed25519", homeDir),
+		authMethods = append(authMethods, ssh.Password(password))
+	}
+
+	// try to find all available keys in the default paths
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	keyPaths := []string{
+		fmt.Sprintf("%s/.ssh/id_rsa", homeDir),
+		fmt.Sprintf("%s/.ssh/id_dsa", homeDir),
+		fmt.Sprintf("%s/.ssh/id_ecdsa", homeDir),
+		fmt.Sprintf("%s/.ssh/id_ed25519", homeDir),
+	}
+
+	for _, keyPath := range keyPaths {
+		newAuthMethod, err := publicKeyFile(keyPath)
+		if err != nil {
+			continue
 		}
 
-		for _, keyPath := range keyPaths {
-			newAuthMethod, err := publicKeyFile(keyPath)
-			if err != nil {
-				continue
-			}
-
-			authMethods = append(authMethods, newAuthMethod)
-		}
+		authMethods = append(authMethods, newAuthMethod)
 	}
 
 	config := &ssh.ClientConfig{
@@ -166,14 +185,16 @@ func (c Connection) StartSession() {
 
 	// start remote shell
 	if err := session.Shell(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to start shell: %v", err)
 	}
 
 	// wait for remote shell to close
 	err = session.Wait()
 	if err != nil {
-		log.Fatal("Failed to run: " + err.Error())
+		return fmt.Errorf("remote shell exited with error: %v", err)
 	}
+
+	return nil
 }
 
 func publicKeyFile(file string) (ssh.AuthMethod, error) {
