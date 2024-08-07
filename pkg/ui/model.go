@@ -174,11 +174,11 @@ func (m *model) updateAddConnection(msg tea.Msg) []tea.Cmd {
 			cmds = append(cmds, m.handleInputNavigation(msg.String())...)
 			// TODO: add I/O with config file
 			if msg.String() == "enter" {
-				host, username, password, port, err := m.parseConnectionInput()
+				host, username, port, password, err := m.parseConnectionInput()
 				if err != nil {
 					log.Fatal(err)
 				}
-				m.manager.AddConnection(host, username, port, &password)
+				m.manager.AddConnection(host, username, port, password)
 				m.currentPage = home
 
 				cmd := m.list.SetItems(m.manager.Items())
@@ -195,7 +195,7 @@ func (m *model) updateAddConnection(msg tea.Msg) []tea.Cmd {
 // parseConnectionInput parses the input from the text inputs (ssh string and password).
 //
 // Returns all the necessary data to create a SSH connection, or an error if the input is invalid in any way.
-func (m *model) parseConnectionInput() (host, username, password string, port int, err error) {
+func (m *model) parseConnectionInput() (host, username string, port int, password *string, err error) {
 	parts := strings.Split(m.inputs[0].Value(), "@")
 
 	username = parts[0]
@@ -211,14 +211,15 @@ func (m *model) parseConnectionInput() (host, username, password string, port in
 
 	if err != nil {
 		// TODO: show error
-		return "", "", "", 0, err
+		return "", "", 0, nil, err
 	}
 
-	if m.inputs[1].Value() != "" {
-		password = m.inputs[1].Value()
+	if strings.TrimSpace(m.inputs[1].Value()) != "" {
+		passwordInput := m.inputs[1].Value()
+		password = &passwordInput
 	}
 
-	return host, username, password, port, nil
+	return host, username, port, password, nil
 }
 
 // handleInputNavigation handles the navigation between the text inputs and the button.
