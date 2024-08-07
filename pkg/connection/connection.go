@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/x/term"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -233,7 +233,7 @@ func publicKeyFile(file string) (ssh.AuthMethod, error) {
 }
 
 func readPassphrase() (string, error) {
-	password, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+	password, err := term.ReadPassword(os.Stdin.Fd())
 	if err != nil {
 		return "", err
 	}
