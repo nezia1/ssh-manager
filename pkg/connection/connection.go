@@ -60,8 +60,14 @@ func (i Item) Title() string {
 
 // TODO: avoid showing password in description
 func (i Item) Description() string {
-	command, args := i.Conn.SSHCommand()
-	return fmt.Sprintf("%s %s", command, strings.Join(args, " "))
+	var description string
+	if i.Conn.IsPassword {
+		description = "Password connection"
+	} else {
+		description = "SSH key connection"
+	}
+
+	return description
 }
 
 func (i Item) FilterValue() string {
