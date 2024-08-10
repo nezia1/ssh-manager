@@ -116,6 +116,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			switch {
 			case key.Matches(msg, m.keys.connect):
+				if len(m.list.Items()) == 0 {
+					break
+				}
 				selectedItem := m.list.SelectedItem().(connection.Item)
 				m.selectedConnection = &selectedItem.Conn
 				cmds = append(cmds, tea.Quit)
