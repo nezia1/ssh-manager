@@ -111,6 +111,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case home:
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
+			if m.list.FilterState() == list.Filtering {
+				break
+			}
 			switch {
 			case key.Matches(msg, m.keys.connect):
 				selectedItem := m.list.SelectedItem().(connection.Item)
