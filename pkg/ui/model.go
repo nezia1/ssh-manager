@@ -85,6 +85,13 @@ func initialModel() model {
 
 	// initialize list
 	list.Title = "Available connections"
+	list.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			keys.insertItem,
+			keys.connect,
+		}
+	}
+
 	list.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			keys.insertItem,
