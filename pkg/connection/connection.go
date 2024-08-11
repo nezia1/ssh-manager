@@ -58,7 +58,6 @@ func (i Item) Title() string {
 
 }
 
-// TODO: avoid showing password in description
 func (i Item) Description() string {
 	var description string
 	if i.Conn.IsPassword {
