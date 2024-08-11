@@ -20,6 +20,18 @@ func (c *Connection) StorePassword(password string) error {
 	return nil
 }
 
+func (c *Connection) RemovePassword() error {
+	cmd := exec.Command("pass", "rm", fmt.Sprintf("%s@%s", c.Username, c.Host))
+
+	err := cmd.Run()
+
+	if err != nil {
+		return fmt.Errorf("failed to delete password: %v", err)
+	}
+
+	return nil
+}
+
 func (c *Connection) Password() (string, error) {
 	cmd := exec.Command("pass", fmt.Sprintf("%s@%s", c.Username, c.Host))
 	out, err := cmd.Output()

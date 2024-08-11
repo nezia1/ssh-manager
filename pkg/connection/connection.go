@@ -107,6 +107,27 @@ func (cm *ConnectionManager) AddConnection(host string, user string, port int, p
 	}
 }
 
+func (cm *ConnectionManager) DeleteConnection(index int) error {
+	// delete password from pass if applicable
+	connectionToDelete := cm.Connections[index]
+	if connectionToDelete.IsPassword {
+		err := connectionToDelete.RemovePassword()
+		if err != nil {
+			return fmt.Errorf("failed to remove password when deleting connection: %v", err)
+		}
+	}
+
+	// delete connection
+	cm.Connections = append(cm.Connections[:index], cm.Connections[index+1:]...)
+
+	err := cm.SaveToDisk()
+
+	if err != nil {
+		return fmt.Errorf("failed to save to disk: %v", err)
+	}
+	return nil
+}
+
 func (cm ConnectionManager) Items() []list.Item {
 	items := []list.Item{}
 	for _, conn := range cm.Connections {

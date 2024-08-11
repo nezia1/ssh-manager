@@ -14,6 +14,7 @@ import (
 
 type keyMap struct {
 	insertItem     key.Binding
+	deleteItem     key.Binding
 	connect        key.Binding
 	toggleHelpMenu key.Binding
 	quit           key.Binding
@@ -43,6 +44,10 @@ func newKeyMap() *keyMap {
 		insertItem: key.NewBinding(
 			key.WithKeys("a"),
 			key.WithHelp("a", "add connection"),
+		),
+		deleteItem: key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("d", "delete connection"),
 		),
 		connect: key.NewBinding(
 			key.WithKeys("enter"),
@@ -129,6 +134,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				selectedItem := m.list.SelectedItem().(connection.Item)
 				m.selectedConnection = &selectedItem.Conn
 				cmds = append(cmds, tea.Quit)
+			case key.Matches(msg, m.keys.deleteItem):
+				if len(m.list.Items()) == 0 {
+					break
+				}
+				err := m.manager.DeleteConnection(m.list.Index())
+
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				cmds = append(cmds, m.list.SetItems(m.manager.Items()))
+
 			case key.Matches(msg, m.keys.insertItem):
 				m.currentPage = addConnection
 			case key.Matches(msg, m.keys.quit):
