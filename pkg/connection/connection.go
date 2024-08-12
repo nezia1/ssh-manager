@@ -2,7 +2,6 @@ package connection
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -22,7 +21,7 @@ type Connection struct {
 	IsPassword bool
 }
 
-func (c Connection) SSHCommand() (string, []string) {
+func (c Connection) SSHCommand() (string, []string, error) {
 	var command string
 	var args []string
 
@@ -32,7 +31,7 @@ func (c Connection) SSHCommand() (string, []string) {
 		command = "sshpass"
 		password, err := c.Password()
 		if err != nil {
-			log.Fatal(err)
+			return "", nil, fmt.Errorf("unable to get password for ssh connection %v: %v", c.Host, err)
 		}
 		args = append(args, "-p", password, "ssh")
 	}
@@ -40,7 +39,7 @@ func (c Connection) SSHCommand() (string, []string) {
 	args = append(args, fmt.Sprintf("%s@%s", c.Username, c.Host))
 	args = append(args, "-p", fmt.Sprintf("%d", c.Port))
 
-	return command, args
+	return command, args, nil
 }
 
 type Item struct {
@@ -77,7 +76,7 @@ type ConnectionManager struct {
 	Connections []Connection
 }
 
-func (cm *ConnectionManager) AddConnection(host string, user string, port int, password *string) {
+func (cm *ConnectionManager) AddConnection(host string, user string, port int, password *string) error {
 	if port == 0 {
 		port = DefaultPort
 	}
@@ -92,7 +91,7 @@ func (cm *ConnectionManager) AddConnection(host string, user string, port int, p
 		err := connection.StorePassword(*password)
 
 		if err != nil {
-			log.Fatal(err)
+			return fmt.Errorf("failed to store password after adding new connection: %v", err)
 		}
 
 		connection.IsPassword = true
@@ -103,8 +102,10 @@ func (cm *ConnectionManager) AddConnection(host string, user string, port int, p
 	err := cm.SaveToDisk()
 
 	if err != nil {
-		log.Fatal(fmt.Printf("failed to save to disk: %v", err))
+		return fmt.Errorf("failed to save to disk after adding new connection: %v", err)
 	}
+
+	return nil
 }
 
 func (cm *ConnectionManager) DeleteConnection(index int) error {
@@ -154,7 +155,7 @@ func (c Connection) StartSession() error {
 	// try to find all available keys in the default paths
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("unable to get user home directory: %v", err)
 	}
 
 	keyPaths := []string{
@@ -182,13 +183,13 @@ func (c Connection) StartSession() error {
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", c.Host, c.Port), config)
 
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("unable to start ssh connection: %v", err)
 	}
 
 	session, err := client.NewSession()
 
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("unable to start ssh session: %v", err)
 	}
 
 	defer session.Close()
@@ -202,7 +203,7 @@ func (c Connection) StartSession() error {
 	// TODO: fix escape sequences such as CTRL-L and arrow keys echoing instead of being interpreted
 	// request a pseudo-terminal
 	if err := session.RequestPty("xterm-256color", 80, 40, modes); err != nil {
-		log.Fatal("request for pseudo terminal failed: ", err)
+		return fmt.Errorf("request for pseudo terminal failed: %v", err)
 	}
 
 	session.Stdout = os.Stdout
