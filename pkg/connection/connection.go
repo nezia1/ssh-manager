@@ -3,7 +3,9 @@ package connection
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/x/term"
@@ -206,13 +208,22 @@ func (c Connection) StartSession() error {
 	oldState, err := term.MakeRaw(fd)
 
 	if err != nil {
-		return fmt.Errorf("failed to set terminal into raw mode: %w", err)
+		return fmt.Errorf("failed to set terminal into raw mode: %v", err)
 	}
 
 	defer term.Restore(fd, oldState)
 
+	// handles resize asynchronously
+	go handleResize(session)
+
+	w, h, err := term.GetSize(fd)
+
+	if err != nil {
+		return fmt.Errorf("cannot get terminal size: %v", err)
+	}
+
 	// request a pseudo-terminal
-	if err := session.RequestPty("xterm-256color", 80, 40, modes); err != nil {
+	if err := session.RequestPty("xterm-256color", h, w, modes); err != nil {
 		return fmt.Errorf("request for pseudo terminal failed: %v", err)
 	}
 
@@ -232,6 +243,29 @@ func (c Connection) StartSession() error {
 	}
 
 	return nil
+}
+
+// handleResize creates a channel and listens to it for SIGWINCH. It handles resizing the ssh session, as we need to explicitely inform it when our terminal window size changes.
+//
+// Meant to be used as a goroutine.
+func handleResize(session *ssh.Session) {
+	signals := make(chan os.Signal, 1)
+
+	signal.Notify(signals, syscall.SIGWINCH)
+	for {
+		<-signals
+
+		fd := os.Stdin.Fd()
+		cols, rows, err := term.GetSize(fd)
+
+		if err != nil {
+			fmt.Printf("failed to get terminal size: %v", err)
+		}
+
+		if err := session.WindowChange(rows, cols); err != nil {
+			fmt.Printf("error resizing terminal: %v", err)
+		}
+	}
 }
 
 func publicKeyFile(file string) (ssh.AuthMethod, error) {
