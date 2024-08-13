@@ -195,12 +195,22 @@ func (c Connection) StartSession() error {
 	defer session.Close()
 
 	modes := ssh.TerminalModes{
-		ssh.ECHO:          0,     // disable echoing
+		ssh.ECHO:          1,     // enable echoing (needed in raw mode, otherwise typed characters are invisible since sent directly to the ssh session)
 		ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
 		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 	}
 
-	// TODO: fix escape sequences such as CTRL-L and arrow keys echoing instead of being interpreted
+	fd := os.Stdin.Fd()
+
+	// this is needed so that special characters (escape sequences such as CTRL-C) can be sent directly to the session
+	oldState, err := term.MakeRaw(fd)
+
+	if err != nil {
+		return fmt.Errorf("failed to set terminal into raw mode: %w", err)
+	}
+
+	defer term.Restore(fd, oldState)
+
 	// request a pseudo-terminal
 	if err := session.RequestPty("xterm-256color", 80, 40, modes); err != nil {
 		return fmt.Errorf("request for pseudo terminal failed: %v", err)
