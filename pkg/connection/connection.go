@@ -2,14 +2,13 @@ package connection
 
 import (
 	"fmt"
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/x/term"
+	"golang.org/x/crypto/ssh"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
-
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/x/term"
-	"golang.org/x/crypto/ssh"
 )
 
 const (
