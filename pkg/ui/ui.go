@@ -14,6 +14,9 @@ func Start() {
 	}
 
 	if m.(model).selectedConnection != nil {
-		m.(model).selectedConnection.StartSession()
+		err := m.(model).selectedConnection.StartSession()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
